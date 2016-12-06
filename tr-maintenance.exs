@@ -64,12 +64,13 @@ defmodule TR do
                   |> rename_files_in_group(fromPath)
                 end)
          end)
+    IO.puts "Done!"
   end
   
   def show_groups_above_70(recTpl) do
     recTpl
     |> Enum.map(
-         fn({p,l,n}) ->                                                             
+         fn({p,l, _n}) ->                                                             
            longs =
              l
              |> Enum.map(
@@ -104,34 +105,15 @@ defmodule TR do
            
            fromFullPath = Path.join([path, fromFile])
            toFullPath   = Path.join([path, toFile])
-           
-           fStat = File.lstat!(fromFullPath)
-           
+
            case String.to_integer(from) == to do
              false ->
-               IO.puts "CHANGED #{path} #{from} #{to}"
+               IO.puts "#{path} RENAMED   #{from}   TO   #{to}"
                File.rename(fromFullPath, toFullPath)
              true  ->
                :ok
            end
-
-         # My notion was that if the file is unreadable then
-         # leave it alone. But as it turns out, rename just returns
-         # an error tuple if the given file is inaccessible so
-         # this was an overkill - and did not even work because
-         # my initial assumption was incorrect...:)
-         #
-         # case fStat.mtime == fStat.ctime do
-         #   true  -> {fromFullPath, :in_use}
-         #   false ->
-         #     File.rename(fromFullPath, toFullPath)
-         #    #{fromFullPath, toFullPath}
-         # end
          end)
-   #|> Enum.reject(
-   #     fn(e) -> e == :ok end
-   #   )
-   #|> IO.inspect
   end
   
   defp move_files_if_more_than_70_articles(lst, fromPath, toPath) do
