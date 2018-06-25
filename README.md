@@ -1,0 +1,1 @@
+Elixir scripts to maintain audio files on the Access News server. (That is, the [Telephone Reader](http://telephonereader.com/) server.) Hoping to replace the physical server soon with a cloud implementation in the upcoming months. (Time permitted.) 
