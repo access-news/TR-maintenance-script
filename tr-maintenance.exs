@@ -26,7 +26,8 @@ defmodule TR do
   # ]
                  #["P1", "P2", "P3"]  
   def list_groups(trmFolders) do
-     
+    runlog("...TR MAINTENANCE...")
+    
     trmFolders
     |> Enum.map( fn(e) ->
           Path.join(~w(t: Pubs #{e}))
@@ -60,11 +61,11 @@ defmodule TR do
            |> Enum.each(
                 fn(lst) ->
                   lst
-                  |> move_files_if_more_than_70_articles(fromPath, "n:/backed-up-recordings/test")
+                  |> move_files_if_more_than_70_articles(fromPath, "n:/backed-up-recordings/archived")
                   |> rename_files_in_group(fromPath)
                 end)
          end)
-    IO.puts "Done!"
+    runlog("....................")
   end
   
   def show_groups_above_70(recTpl) do
@@ -93,11 +94,12 @@ defmodule TR do
     articleNumber = Regex.run(~r/\d{2}/, hd(lst)) |> hd
     
     from =
-      Enum.join([articleNumber, "99"])
+      Enum.join([articleNumber, "98"])
       |> String.to_integer
     
     lst
     |> Enum.zip(from..50)
+    |> Enum.reverse()
     |> Enum.map(
          fn({from, to}) ->
            fromFile = Enum.join([from, ".TRM"])
@@ -108,7 +110,7 @@ defmodule TR do
 
            case String.to_integer(from) == to do
              false ->
-               IO.puts "#{path} RENAMED   #{from}   TO   #{to}"
+               runlog("#{path} RENAMED   #{from}   TO   #{to}")
                File.rename(fromFullPath, toFullPath)
              true  ->
                :ok
@@ -132,7 +134,7 @@ defmodule TR do
                fromFullPath = Path.join([fromPath, recFileName])
                toFullPath   = Path.join([  toPath,  toFileName])
                
-               IO.puts "MOVING #{fromFullPath}"
+               runlog("MOVING #{fromFullPath}")
                File.rename(fromFullPath, toFullPath)
              end)
         newLst
@@ -142,22 +144,38 @@ defmodule TR do
     end
   end
   
+  defp runlog(msg) do
+    logfile = "n:/backed-up-recordings/log"
+    {:ok, dev} = File.open(logfile, [:append])
+    
+    [date, time] = timestamp
+    dateString = date |> Enum.join("/")
+    timeString = time |> Enum.join(":")
+    IO.puts(dev, "#{dateString} #{timeString} - #{msg}")
+    File.close(dev)
+  end
+
+  defp timestamp do
+    {{year, month, day}, {hour, min, sec}} = :calendar.local_time
+    [year, month, day, hour, min, sec]
+       |> Enum.map(
+            fn(e) -> 
+              e
+              |> to_string
+              |> String.pad_leading(2, "0")
+            end)
+       |> Enum.chunk(3)
+  end
+  
   defp renameMovedFiles(fileBaseName, pathToExtractPubNameFrom) do
     pubFolder = Regex.run(~r/\S{2}$/, pathToExtractPubNameFrom) |> hd
-    now = DateTime.utc_now
+
+    time = Enum.join(timestamp, "-")
     
     Enum.join(
-      [ pubFolder,
+      [ time, "_", pubFolder,
         "_",
         fileBaseName,
-        "_",
-        now.year,
-        now.month,
-        now.day,
-        "-",
-        now.hour,
-        now.minute,
-        now.second,
         ".TRM"])
   end
   
@@ -187,5 +205,7 @@ defmodule TR do
          end)
   end
 end
+
+
 
 TR.list_groups(~w(P2 P3 P4)) |> TR.iterate_groups
