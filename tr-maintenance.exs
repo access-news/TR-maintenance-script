@@ -25,32 +25,29 @@ defmodule TR do
   # , {...}      
   # ]
                  #["P1", "P2", "P3"]  
-  def list_groups(trmFolders) do
+  def list_groups(trm_folder_maps) do
     runlog("...TR MAINTENANCE...")
     
-    trmFolders
-    |> Enum.map( fn(e) ->
-          Path.join(~w(t: Pubs #{e}))
-       end)
-    |> Enum.map(
-         fn(path) -> 
-           {:ok, files} = File.ls(path)
+    Enum.map(trm_folder_maps, fn(%{trmFolder: e} = tfm) ->
+      path = Path.join(~w(t: Pubs #{e}))
+      {:ok, files} = File.ls(path)
            
-           {recs, nonTRMs} =
-             files
-             |> Enum.reverse
-             |> filter3DigitSysPrompts
-             |> Enum.partition(
-                  &Regex.match?(~r/(trm|TRM)$/, &1)
-                )
-           
-           recsByGroup =
-             recs
-             |> baseFileName
-             |> groupByMagazine
+      {recs, nonTRMs} =
+        files
+        |> Enum.reverse()
+        |> filter3DigitSysPrompts()
+        |> Enum.partition(
+             &Regex.match?(~r/(trm|TRM)$/, &1)
+           )
+      
+      recsByGroup =
+        recs
+        |> base_filename()
+        |> group_by_magazine()
+        |> filter_exceptions(tfm)
 
-           {path, recsByGroup, nonTRMs}  # === recTpl
-         end)
+      {path, recsByGroup, nonTRMs}  # === recTpl
+     end)
   end
   
   def iterate_groups(recTpl) do
@@ -99,7 +96,7 @@ defmodule TR do
     
     lst
     |> Enum.zip(from..50)
-    |> Enum.reverse()
+    # |> Enum.reverse()
     |> Enum.map(
          fn({from, to}) ->
            fromFile = Enum.join([from, ".TRM"])
@@ -187,7 +184,7 @@ defmodule TR do
          end)
   end
   
-  defp baseFileName(enum) do
+  defp base_filename(enum) do
     enum
     |> Enum.map(
          fn(e) ->
@@ -196,7 +193,7 @@ defmodule TR do
          end)
   end
   
-  defp groupByMagazine(enum) do
+  defp group_by_magazine(enum) do
     enum
     |> Enum.chunk_by(
          fn(e) ->
@@ -204,8 +201,26 @@ defmodule TR do
            |> tl
          end)
   end
+  
+  defp filter_exceptions(groups_by_magazine, %{except: exceptions}) do
+    Enum.reject(
+      groups_by_magazine,
+      fn(group) ->
+        Enum.any?(exceptions, &Regex.match?(~r/^#{&1}\d{2}$/, hd(group)))
+      end
+    )
+  end
+  
+  defp filter_exceptions(groups_by_magazine, _trm_folder_map) do
+    groups_by_magazine
+  end
 end
 
 
 
-TR.list_groups(~w(P2 P3 P4)) |> TR.iterate_groups
+TR.list_groups(
+  [ %{ trmFolder: "P2"},
+    %{ trmFolder: "P3"},
+    %{ trmFolder: "P4", except: ~w(57 58 59 60)}
+  ])
+|> TR.iterate_groups
